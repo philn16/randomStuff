@@ -19,13 +19,25 @@ class tick_tack_toe_board:
 		self.type={'blank':0,'x':1,'o':2}
 		# The length of "in a row" to win
 		self.win_length=3
-		self.rows=rows
-		self.cols=cols
+		self._rows=rows
+		self._cols=cols
 		# the thing that contains the Xs and Os
-		self.board = np.reshape(np.zeros(self.rows*self.cols),(self.rows,self.cols))
+		self.boardStatus = np.reshape(np.zeros(self._rows * self._cols), (self._rows, self._cols))
+
+	@property
+	def rows(self):
+		return self._rows
+	@property
+	def cols(self):
+		return self._cols
+
+	def get_board(self):
+		return self.boardStatus
+	def set_board(self,board):
+		self.boardStatus=board
 
 	def _valid_point(self,row,col):
-		return 0 <= row < self.rows and 0 <= col < self.cols
+		return 0 <= row < self.rows and 0 <= col < self._cols
 
 	def __contains__(self, point):
 		return self._valid_point(point[0],point[1])
@@ -46,34 +58,22 @@ class tick_tack_toe_board:
 						break
 			return points
 
-		for type in [self.type["x"],self.type["o"]]:
-			for row,col in [(row,col) for row in range(self.rows) for col in range(self.cols)]:
+		for piece in [self.type["x"],self.type["o"]]:
+			for row,col in [(row,col) for row in range(self.rows) for col in range(self._cols)]:
 				left_right = lambda row,col,direction: (row,direction+col)
 				up_down = lambda row,col,direction: (row+direction,col)
 				diag_up_right = lambda row,col,direction: (row-direction,col+direction)
 				diag_down_right = lambda row,col,direction: (row+direction,col+direction)
 				def test_points(points,type):
 					for point in points:
-						if self.board[point] != type:
+						if self.boardStatus[point] != type:
 							return False
 					return True
 				for movement in [left_right, up_down, diag_up_right, diag_down_right]:
 					points=get_test_squares(row,col,movement)
-					if len(points) >= self.win_length and test_points(points,type):
-						return type
+					if len(points) >= self.win_length and test_points(points,piece):
+						return piece
 		return self.type["blank"]
-
-
-
-	def get_move_history(self):
-		return self.history;
-
-class tick_tack_toe_game_generator:
-	"""
-	Generates possible tick tack toe games
-	"""
-	def generate_solutions(self,rows,cols):
-		pass
 
 
 class test_tick_tack_toe_board(unittest.TestCase):
@@ -81,8 +81,48 @@ class test_tick_tack_toe_board(unittest.TestCase):
 		board=tick_tack_toe_board()
 		self.assertFalse( board.game_won() )
 		for row,col in ((0,0),(1,1),(2,2)):
-			board.board[row][col] = board.type["x"]
+			board.boardStatus[row][col] = board.type["x"]
 		self.assertEqual( board.game_won(), board.type["x"])
+		self.assertNotEqual( board.game_won(), board.type["o"])
+
+def get_tack_tack_toe_losing_move(board, toMove=None):
+	"""
+	Returns a (row,col) tuple for the move that'll be guaranteed to make the current mover loose or None if no such move exists
+	"""
+	# can't get a losing move if the game is won
+	if board.gameWon == toMove:
+		return None
+
+	cur_pos = board.get_board()
+
+	def try_next(pos,increment=False):
+		row,col=pos
+		if increment:
+			col += 1
+		# keep looking for avaliable spots untill a blank spot is fount
+		while board[row,col] != board.type["blank"]:
+			if pos[1] >= board.cols:
+				row+=1
+				col=0
+			if row >= board.rows:
+				return None
+		return row,col
+
+	attempt_move=try_next( (0,0) )
+	while attempt_move is not None:
+		board.boardStatus[attempt_move] = {board.type("x"):board.type["o"],board.type("o"):board.type["x"]}[toMove]
+		result = get_tack_tack_toe_losing_move(board,toMove)
+		if result is not None:
+			return attempt_move
+		# if the move doesn't give us what we want try again with soething else
+		board.set_board(cur_pos)
+		attempt_move=try_next(attempt_move,increment=True)
+	# if we didn't return a valid move in the loop there is none to be found
+	return None
+
+class test_get_tack_tack_toe_losing_move(unittest.TestCase):
+	def test_1(self):
+		pass
 
 if __name__== '__main__':
 	unittest.main()
