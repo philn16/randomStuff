@@ -22,7 +22,7 @@ class tick_tack_toe_board:
 		self._rows=rows
 		self._cols=cols
 		# the thing that contains the Xs and Os
-		self.boardStatus = np.reshape(np.zeros(self._rows * self._cols), (self._rows, self._cols))
+		self.boardStatus = np.reshape(np.zeros(self._rows * self._cols,dtype=int), (self._rows, self._cols))
 
 	@property
 	def rows(self):
@@ -90,7 +90,7 @@ def get_tack_tack_toe_losing_move(board, toMove=None):
 	Returns a (row,col) tuple for the move that'll be guaranteed to make the current mover loose or None if no such move exists
 	"""
 	# can't get a losing move if the game is won
-	if board.gameWon == toMove:
+	if board.game_won() == toMove:
 		return None
 
 	cur_pos = board.get_board()
@@ -100,8 +100,8 @@ def get_tack_tack_toe_losing_move(board, toMove=None):
 		if increment:
 			col += 1
 		# keep looking for avaliable spots untill a blank spot is fount
-		while board[row,col] != board.type["blank"]:
-			if pos[1] >= board.cols:
+		while board.boardStatus[row,col] != board.type["blank"]:
+			if col >= board.cols:
 				row+=1
 				col=0
 			if row >= board.rows:
@@ -122,7 +122,15 @@ def get_tack_tack_toe_losing_move(board, toMove=None):
 
 class test_get_tack_tack_toe_losing_move(unittest.TestCase):
 	def test_1(self):
-		pass
+		def get_result( x_moves, o_moves,toMove=None):
+			board=tick_tack_toe_board()
+			for xmove in x_moves:
+				board.boardStatus[xmove]=board.type["x"]
+			for omove in o_moves:
+				board.boardStatus[omove]=board.type["o"]
+			return get_tack_tack_toe_losing_move(board,toMove)
+		self.assertEquals( None, get_result([(0,0),(0,1),(1,2),(2,0)],[(0,2),(1,0),(1,1)] ))
+
 
 if __name__== '__main__':
 	unittest.main()
