@@ -87,7 +87,7 @@ class test_tick_tack_toe_board(unittest.TestCase):
 
 def get_tack_tack_toe_losing_move(board, toMove=None):
 	"""
-	Returns a (row,col) tuple for the move that'll be guaranteed to make the current mover loose or None if no such move exists
+	Returns a (row,col) tuple for the move that'll be guaranteed to make the current mover loose or None if no such "perfect" move exists
 	"""
 	# can't get a losing move if the game is won
 	if board.game_won() == toMove:
@@ -95,28 +95,49 @@ def get_tack_tack_toe_losing_move(board, toMove=None):
 
 	cur_pos = board.get_board()
 
-	def try_next(pos,increment=False):
+	# provides a way of iterating through avaliable positions on the board.
+	def get_next(pos,increment=False):
 		row,col=pos
 		if increment:
 			col += 1
 		# keep looking for avaliable spots untill a blank spot is fount
 		while board.boardStatus[row,col] != board.type["blank"]:
+			col += 1
 			if col >= board.cols:
 				row+=1
 				col=0
-			if row >= board.rows:
-				return None
+				if row >= board.rows:
+					return None
+
 		return row,col
 
-	attempt_move=try_next( (0,0) )
+	# provides a way to alternate between Xs and Os
+	next_type = lambda curType:  {board.type("x"):board.type["o"],board.type("o"):board.type["x"]}[toMove]
+
+	# gets results for all possible moves given the bord position and who's toMove
+	#  returns a list of places to move to "win" or None
+	def get_possible_results(board,toMove ):
+		results=[]
+		attempt_move=get_next( (0,0) )
+		while attempt_move is not None:
+			board.boardStatus[attempt_move] = toMove
+			results.append(board.game_won())
+			# set things up for the next round
+			board.set_board(cur_pos)
+			attempt_move=get_next(attempt_move,increment=True)
+		return results
+
+	# make sure none of the following opponent moves have guaranteed victory
+	attempt_move=get_next( (0,0) )
 	while attempt_move is not None:
-		board.boardStatus[attempt_move] = {board.type("x"):board.type["o"],board.type("o"):board.type["x"]}[toMove]
-		result = get_tack_tack_toe_losing_move(board,toMove)
-		if result is not None:
+		board.boardStatus[attempt_move] = toMove
+		# If the opposition has a sure path to victory the move is bad, so try another move
+		if not None in get_possible_results(board,next_type(toMove)):
+			continue
+		else:
 			return attempt_move
-		# if the move doesn't give us what we want try again with soething else
-		board.set_board(cur_pos)
-		attempt_move=try_next(attempt_move,increment=True)
+		attempt_move=get_next(attempt_move,increment=True)
+
 	# if we didn't return a valid move in the loop there is none to be found
 	return None
 
@@ -129,7 +150,9 @@ class test_get_tack_tack_toe_losing_move(unittest.TestCase):
 			for omove in o_moves:
 				board.boardStatus[omove]=board.type["o"]
 			return get_tack_tack_toe_losing_move(board,toMove)
-		self.assertEquals( None, get_result([(0,0),(0,1),(1,2),(2,0)],[(0,2),(1,0),(1,1)] ))
+		bord=tick_tack_toe_board()
+		self.assertEquals( None, get_result([(0,0),(0,1),(1,2),(2,0)],[(0,2),(1,0),(1,1)],toMove=bord.type["x"] ))
+		self.assertEquals( (1,2) , get_result([(0,0),(0,2),(1,0),(2,1)],[(0,1),(1,1),(2,2)],bord.type["o"]) )
 
 
 if __name__== '__main__':
