@@ -214,6 +214,8 @@ class test_get_tack_tack_toe_losing_move(unittest.TestCase):
 		bord=tick_tack_toe_board()
 		self.assertEqual( None, get_result([(0,0),(0,1),(1,2),(2,0)],[(0,2),(1,0),(1,1)],toMove=bord.type["x"] ))
 		self.assertEqual( (1,2) , get_result([(0,0),(0,1),(1,0),(2,1)],[(0,2),(1,1),(2,2)],bord.type["x"]) )
+		self.assertEqual( None , get_result([(0,0),(0,1),(1,0),(2,1)],[(0,2),(1,1),(2,2)],bord.type["o"]) )
+		self.assertNotEqual(None, get_result([(1,1),(0,0)],[(2,1) ],bord.type["o"]) )
 
 
 if __name__== '__main__':
