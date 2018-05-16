@@ -43,16 +43,17 @@ class tick_tack_toe_board:
 		return self._valid_point(point[0],point[1])
 
 	def game_won(self):
-		""" checks to see if the game is won. Returns the winner or 0 if no winner"""
+		""" checks to see if the game is won. Returns the winner or self.type["blank"] if no winner"""
 		# This gets squares that go through a given row and column in a line
 		def get_test_squares(row,col,movement):
 			points=[(row,col)]
-			displacement=1
+
 			for direction in [-1,1]:
+				displacement=1
 				while True:
 					test_point=movement(row,col,displacement*direction)
 					if test_point in self:
-						direction += 1
+						displacement += 1
 						points.append( test_point)
 					else:
 						break
@@ -64,6 +65,7 @@ class tick_tack_toe_board:
 				up_down = lambda row,col,direction: (row+direction,col)
 				diag_up_right = lambda row,col,direction: (row-direction,col+direction)
 				diag_down_right = lambda row,col,direction: (row+direction,col+direction)
+				# sees if all the points are of the given type
 				def test_points(points,type):
 					for point in points:
 						if self.boardStatus[point] != type:
@@ -74,6 +76,15 @@ class tick_tack_toe_board:
 					if len(points) >= self.win_length and test_points(points,piece):
 						return piece
 		return self.type["blank"]
+
+	def game_draw(self):
+		""" Return true if the game is a draw and false otherwise """
+		for num in np.ravel(self.boardStatus):
+			if num == self.type["blank"]:
+				return False
+		if self.game_won() != self.type["blank"]:
+			return False
+		return True
 
 	def __str__(self):
 		string=""
@@ -92,13 +103,34 @@ class test_tick_tack_toe_board(unittest.TestCase):
 			board.boardStatus[row][col] = board.type["x"]
 		self.assertEqual( board.game_won(), board.type["x"])
 		self.assertNotEqual( board.game_won(), board.type["o"])
+		self.assertEqual( board.game_draw(), False)
+	def test_2(self):
+		board=tick_tack_toe_board()
+		self.assertFalse( board.game_won() )
+		for row,col in ((0,0),(0,1),(2,0),(1,2),(2,1)):
+			board.boardStatus[row][col] = board.type["x"]
+		for row,col in ((1,1),(0,2),(1,0),(2,2)):
+			board.boardStatus[row][col] = board.type["o"]
+		print(board)
+		self.assertEqual( board.game_won(), False)
+		self.assertEqual( board.game_draw() , True)
+
 
 def get_tack_tack_toe_losing_move(board, toMove=None):
 	"""
 	Returns a (row,col) tuple for the move that'll be guaranteed to make the current mover loose or None if no such "perfect" move exists
 	"""
-	# can't get a losing move if the game is won
-	if board.game_won() == toMove:
+	# provides a way to alternate between Xs and Os
+	next_type = lambda curType:  {board.type["x"]:board.type["o"],board.type["o"]:board.type["x"]}[toMove]
+
+	# condition for when a game is won
+	def game_won(board, toMove):
+		return board.game_won() == next_type(toMove)
+	def game_lost(board, toMove):
+		return board.game_won() == toMove
+
+	# condition for already lost and won
+	if game_lost(board,toMove):
 		return None
 
 	cur_pos = board.get_board()
@@ -133,25 +165,28 @@ def get_tack_tack_toe_losing_move(board, toMove=None):
 			get_next(attempt_move,exclusive=True)
 		return moves
 
-	# provides a way to alternate between Xs and Os
-	next_type = lambda curType:  {board.type["x"]:board.type["o"],board.type["o"]:board.type["x"]}[toMove]
+	def reset_board():
+		board = cur_pos
 
 	# make sure none of the following opponent moves have guaranteed victory
 	for attempt_move in get_possible_moves():
 		board.boardStatus[attempt_move] = toMove
 		# If that was the last move then we're good
-		if board.game_won() == toMove:
-			board.boardStatus=cur_pos
-			return attempt_move
+		if game_lost(board,toMove):
+			reset_board()
+			return None
 		# the move will win the game
-		sucess=False
+		sucess=True
 		# no matter what the oposition does the player must still be able to "win" after their move
 		for opposition_move in get_possible_moves():
 			board.boardStatus[opposition_move]=next_type(toMove)
-			# see if there's a move we can play to win the game
-			sucess = sucess or ( get_tack_tack_toe_losing_move(board,toMove) )
+			if not game_won(board,toMove):
+				# see if there's a move we can play to win the game
+				sucess = sucess and ( get_tack_tack_toe_losing_move(board,toMove) is not None)
+			reset_board()
+		# set up for next round
+		reset_board()
 		if sucess:
-			board.boardStatus=cur_pos
 			return  attempt_move
 
 	# if we didn't return a valid move in the loop there is none to be found
@@ -168,8 +203,8 @@ class test_get_tack_tack_toe_losing_move(unittest.TestCase):
 			print(board)
 			return get_tack_tack_toe_losing_move(board,toMove)
 		bord=tick_tack_toe_board()
-		self.assertEqual( None, get_result([(0,0),(0,1),(1,2),(2,0)],[(0,2),(1,0),(1,1)],toMove=bord.type["x"] ))
-		# self.assertEqual( (1,2) , get_result([(0,0),(0,2),(1,0),(2,1)],[(0,1),(1,1),(2,2)],bord.type["o"]) )
+		# self.assertEqual( None, get_result([(0,0),(0,1),(1,2),(2,0)],[(0,2),(1,0),(1,1)],toMove=bord.type["x"] ))
+		# self.assertEqual( (1,2) , get_result([(0,0),(0,1),(1,0),(2,1)],[(0,2),(1,1),(2,2)],bord.type["o"]) )
 
 
 if __name__== '__main__':
